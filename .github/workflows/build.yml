@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "2 * * * *"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,27 +12,29 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
+
       - name: Checkout Data
         uses: actions/checkout@v4
-      - name: Set up S3cmd cli tool
-        uses: s3-actions/s3cmd@v1.9.0
-        with:
-          provider: cloudflare
-          region: 'auto'
-          access_key: ${{ secrets.S3_ACCESS_KEY }}
-          secret_key: ${{ secrets.S3_SECRET_KEY }}
-          account_id: ${{ secrets.S3_ACCOUNT_ID }}
+
+      # ---------- 删掉整个 s3cmd 那段！ ----------
+      # - name: Set up S3cmd cli tool
+      #   uses: s3-actions/s3cmd@v1.9.0
+      #   ... 全部删掉 ...
+
       - name: Set Timezone
         uses: szenius/set-timezone@v2.0
         with:
           timezoneLinux: "Asia/Shanghai"
+
       - name: Parse
         run: |
-          s3cmd get s3://openipdb/openipdb.ipdb /tmp/openipdb.ipdb
+          # 👇 替换成公共 CDN 下载
+          wget https://unpkg.com/openipdb.ipdb@latest/openipdb.ipdb -O /tmp/openipdb.ipdb
           ls -al /tmp/openipdb.ipdb
           rm -r ./data
           pnpm install
           pnpm run build
+
       - name: Push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
