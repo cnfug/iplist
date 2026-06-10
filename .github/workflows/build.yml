@@ -8,21 +8,41 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    # ➔ 核心修复：就在这里加上下面这两行，赋予机器人向仓库提交代码的权限
-    permissions:
-      contents: write
-
     steps:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
+
+      - name: Checkout Data
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Set Timezone
+        uses: szenius/set-timezone@v2.0
+        with:
+          timezoneLinux: "Asia/Shanghai"
+
+      - name: Parse
+        run: |
+          # 下载 IP 库（使用 npm 公开包，无需 S3 密钥）
+          wget https://cdn.jsdelivr.net/npm/openipdb.ipdb@latest/openipdb.ipdb -O /tmp/openipdb.ipdb
+          ls -al /tmp/openipdb.ipdb
           
-      # ... 后面保持你之前的 Steps 不变 ...
+          rm -r ./data
+          pnpm install
+          pnpm run build
+
+          # 🔴 构建完成后，替换所有 .md 文件中的地址
+          find . -name "*.md" -type f -exec sed -i 's/metowolf.github.io\/iplist/cnfug.github.io\/iplist/g' {} +
+
+          # 验证替换结果（可选）
+          grep -r "cnfug.github.io/iplist" --include="*.md" . || true
 
       - name: Push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes to the output on this push; exiting."
@@ -31,6 +51,7 @@ jobs:
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "i@i-meto.com"
+          git remote set-url origin https://${GH_PAT}@github.com/cnfug/iplist.git
           git add .
           git commit -m "[auto] $(date '+%Y-%m-%d %H:%M:%S')"
           git push
