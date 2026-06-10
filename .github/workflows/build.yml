@@ -23,23 +23,20 @@ jobs:
         with:
           timezoneLinux: "Asia/Shanghai"
 
-      - name: Parse
-        run: |
-          # 下载IP库（用npm公开CDN，无需S3密钥）
-          wget https://cdn.jsdelivr.net/npm/openipdb.ipdb@latest/openipdb.ipdb -O /tmp/openipdb.ipdb
-          ls -al /tmp/openipdb.ipdb
-          
-          rm -r ./data
-          pnpm install
-          pnpm run build
+- name: Parse
+  run: |
+    wget https://cdn.jsdelivr.net/npm/openipdb.ipdb@latest/openipdb.ipdb -O /tmp/openipdb.ipdb
+    ls -al /tmp/openipdb.ipdb
+    
+    rm -r ./data
+    pnpm install
+    pnpm run build
 
-          # 🔴 全局替换所有文件里的旧地址为你的地址
-          # 替换规则：metowolf.github.io/iplist → cnfug.github.io/iplist
-          # 遍历当前目录下所有文件，递归替换，不限制后缀
-          find . -type f -exec sed -i 's/metowolf.github.io\/iplist/cnfug.github.io\/iplist/g' {} +
+    # 🔴 关键：构建完成后，强制替换所有 .md 文件里的地址
+    find . -name "*.md" -type f -exec sed -i 's/metowolf.github.io\/iplist/cnfug.github.io\/iplist/g' {} +
 
-          # 可选：打印替换后的结果，方便调试
-          grep -r "cnfug.github.io/iplist" --include="*.md" --include="*.html" --include="*.txt" ./docs ./data 2>/dev/null || true
+    # 可选：验证替换结果
+    grep -r "cnfug.github.io/iplist" --include="*.md" . || true
 
       - name: Push
         env:
