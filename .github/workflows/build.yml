@@ -35,17 +35,18 @@ jobs:
           pnpm install
           pnpm run build
 
-      - name: Push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "No changes to the output on this push; exiting."
-            exit 0
-          fi
+- name: Push
+  env:
+    GH_PAT: ${{ secrets.GH_PAT }}
+  run: |
+    if [ -z "$(git status --porcelain)" ]; then
+      echo "No changes to the output on this push; exiting."
+      exit 0
+    fi
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "i@i-meto.com"
-          git add .
-          git commit -m "[auto] $(date '+%Y-%m-%d %H:%M:%S')"
-          git push
+    git config --global user.name "github-actions[bot]"
+    git config --global user.email "i@i-meto.com"
+    git remote set-url origin https://${GH_PAT}@github.com/cnfug/iplist.git
+    git add .
+    git commit -m "[auto] $(date '+%Y-%m-%d %H:%M:%S')"
+    git push
