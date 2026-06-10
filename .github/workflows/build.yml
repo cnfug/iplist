@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "2 * * * *"
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,11 +14,9 @@ jobs:
 
       - name: Checkout Data
         uses: actions/checkout@v4
-
-      # ---------- 删掉整个 s3cmd 那段！ ----------
-      # - name: Set up S3cmd cli tool
-      #   uses: s3-actions/s3cmd@v1.9.0
-      #   ... 全部删掉 ...
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Set Timezone
         uses: szenius/set-timezone@v2.0
@@ -28,25 +25,34 @@ jobs:
 
       - name: Parse
         run: |
-          # 👇 替换成公共 CDN 下载
-          wget https://unpkg.com/openipdb.ipdb@latest/openipdb.ipdb -O /tmp/openipdb.ipdb
+          # 下载IP库（用npm公开CDN，无需S3密钥）
+          wget https://cdn.jsdelivr.net/npm/openipdb.ipdb@latest/openipdb.ipdb -O /tmp/openipdb.ipdb
           ls -al /tmp/openipdb.ipdb
+          
           rm -r ./data
           pnpm install
           pnpm run build
 
-- name: Push
-  env:
-    GH_PAT: ${{ secrets.GH_PAT }}
-  run: |
-    if [ -z "$(git status --porcelain)" ]; then
-      echo "No changes to the output on this push; exiting."
-      exit 0
-    fi
+          # 🔴 全局替换所有文件里的旧地址为你的地址
+          # 替换规则：metowolf.github.io/iplist → cnfug.github.io/iplist
+          # 遍历当前目录下所有文件，递归替换，不限制后缀
+          find . -type f -exec sed -i 's/metowolf.github.io\/iplist/cnfug.github.io\/iplist/g' {} +
 
-    git config --global user.name "github-actions[bot]"
-    git config --global user.email "i@i-meto.com"
-    git remote set-url origin https://${GH_PAT}@github.com/cnfug/iplist.git
-    git add .
-    git commit -m "[auto] $(date '+%Y-%m-%d %H:%M:%S')"
-    git push
+          # 可选：打印替换后的结果，方便调试
+          grep -r "cnfug.github.io/iplist" --include="*.md" --include="*.html" --include="*.txt" ./docs ./data 2>/dev/null || true
+
+      - name: Push
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to the output on this push; exiting."
+            exit 0
+          fi
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "i@i-meto.com"
+          git remote set-url origin https://${GH_PAT}@github.com/cnfug/iplist.git
+          git add .
+          git commit -m "[auto] $(date '+%Y-%m-%d %H:%M:%S')"
+          git push
